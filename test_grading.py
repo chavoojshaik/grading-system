@@ -1,22 +1,54 @@
-
 import unittest
-from grading import calculate_grade
+import csv
+import os
+import tempfile
+from grading import calculate_grade, generate_report, load_students
 
 
 class TestGrading(unittest.TestCase):
 
-    def test_grades(self):
-        self.assertEqual(calculate_grade(85), "A")
-        self.assertEqual(calculate_grade(72), "B")
-        self.assertEqual(calculate_grade(55), "C")
-        self.assertEqual(calculate_grade(32), "F")
+    def test_boundary_values(self):
+        test_cases = [
+            (39, "F"),
+            (40, "C"),
+            (59, "C"),
+            (60, "B"),
+            (79, "B"),
+            (80, "A"),
+            (100, "A")
+        ]
+
+        for marks, expected in test_cases:
+            with self.subTest(marks=marks):
+                self.assertEqual(calculate_grade(marks), expected)
 
     def test_invalid_marks(self):
-        with self.assertRaises(ValueError):
-            calculate_grade(-1)
+        for marks in [-1, 101]:
+            with self.subTest(marks=marks):
+                with self.assertRaises(ValueError):
+                    calculate_grade(marks)
 
-        with self.assertRaises(ValueError):
-            calculate_grade(101)
+    def test_non_numeric_marks(self):
+        for marks in ["hello", None, True]:
+            with self.subTest(marks=marks):
+                with self.assertRaises(ValueError):
+                    calculate_grade(marks)
+
+    def test_malformed_csv(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", newline="", suffix=".csv", delete=False
+        ) as file:
+            writer = csv.writer(file)
+            writer.writerow(["name", "marks"])
+            writer.writerow(["Ravi", "85"])
+            writer.writerow(["Priya"])
+            filename = file.name
+
+        try:
+            with self.assertRaises(ValueError):
+                load_students(filename)
+        finally:
+            os.remove(filename)
 
 
 if __name__ == "__main__":
